@@ -8,7 +8,7 @@ package world.share.myapplication.neamparser.data;
 public class SatellitesData {
 
     /**
-     * 编号
+     * 卫星编号，GPS卫星编号为PRN号，范围1-32，WAAS星编号为PRN号-87，范围33-64，GLONASS卫星编号为slot number+64,slot范围为1-24
      **/
     public String number;
 

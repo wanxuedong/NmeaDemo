@@ -8,7 +8,16 @@ import android.text.TextUtils;
 import java.util.ArrayList;
 import java.util.List;
 
+import world.share.myapplication.neamparser.constant.NMEAMessageID;
+import world.share.myapplication.neamparser.formparse.NMEAMessageIdParser;
+
 import static world.share.myapplication.ch34xcache.Ch34xDivider.LINE;
+import static world.share.myapplication.neamparser.constant.FieldLength.GGA_LENGTH;
+import static world.share.myapplication.neamparser.constant.FieldLength.GLL_LENGTH;
+import static world.share.myapplication.neamparser.constant.FieldLength.GSA_LENGTH;
+import static world.share.myapplication.neamparser.constant.FieldLength.GSV_LENGTH;
+import static world.share.myapplication.neamparser.constant.FieldLength.RMC_LENGTH;
+import static world.share.myapplication.neamparser.constant.FieldLength.VTG_LENGTH;
 
 
 /**
@@ -41,10 +50,16 @@ public class CH34xCahce {
      * nmea整个字符串缓存位置索引
      **/
     private int index = 0;
+
+    /**
+     * 一段完整NMEA数据最大长度
+     **/
+    private final int MAX_CACHE = 100;
+
     /**
      * 临时nmea缓存数据
      **/
-    private char[] cachesChars = new char[100];
+    private char[] cachesChars = new char[MAX_CACHE];
 
     /**
      * *后面的校验符校验个数，校验数字只会有俩个
@@ -76,7 +91,7 @@ public class CH34xCahce {
     /**
      * 最大缓存nmea集合大小,装满清除，重新添加数据
      **/
-    private int MAX_CACHE = 60;
+    private int MAX_CACHE_LENGTH = 60;
 
     /**
      * 给读取加锁，避免读取同时进行导致数据异常
@@ -92,6 +107,11 @@ public class CH34xCahce {
      * 是否可以输出数据
      **/
     private boolean start = false;
+
+    /**
+     * 用于解析NMEA协议的卫星类型字段
+     **/
+    private NMEAMessageIdParser messageIdParser;
 
     public static CH34xCahce getInstance() {
         if (instance == null) {
@@ -172,6 +192,13 @@ public class CH34xCahce {
      **/
     private void handleChar(char aChar) {
         if (Ch34xDivider.HEAD == aChar) {
+
+            //重置nmea数据缓存和索引位置
+            endIndex = -1;
+            index = 0;
+            cachesChars = new char[MAX_CACHE];
+            useEnd = false;
+
             //nmea头部
             addChar(aChar);
             useHead = true;
@@ -196,12 +223,6 @@ public class CH34xCahce {
                     if (endIndex == 2) {
                         //处理整个nmea缓存数据
                         push(cachesChars);
-
-                        //重置nmea数据缓存和索引位置
-                        endIndex = -1;
-                        index = 0;
-                        cachesChars = new char[100];
-                        useEnd = false;
                     }
                 }
             }
@@ -215,7 +236,7 @@ public class CH34xCahce {
      * @param c 传入的nmea字符，不可属于特殊字符
      **/
     private void addChar(char c) {
-        if (c != LINE) {
+        if (c != LINE && index <= MAX_CACHE) {
             cachesChars[index++] = c;
         }
     }
@@ -234,9 +255,46 @@ public class CH34xCahce {
                     e.printStackTrace();
                 }
             }
-            if (nmeaString.size() > MAX_CACHE) {
+            if (nmeaString.size() > MAX_CACHE_LENGTH) {
                 nmeaString.clear();
             }
+            //检查NMEA数据合法性
+            String messageID = messageIdParser.parseMessageId(String.valueOf(chars));
+            String[] original = String.valueOf(chars).split(",");
+            switch (messageID) {
+                case NMEAMessageID.GGA:
+                    if (original.length != GGA_LENGTH) {
+                        return;
+                    }
+                    break;
+                case NMEAMessageID.GLL:
+                    if (original.length != GLL_LENGTH) {
+                        return;
+                    }
+                    break;
+                case NMEAMessageID.GSA:
+                    if (original.length != GSA_LENGTH) {
+                        return;
+                    }
+                    break;
+                case NMEAMessageID.GSV:
+                    if (original.length != GSV_LENGTH) {
+                        return;
+                    }
+                    break;
+                case NMEAMessageID.RMC:
+                    if (original.length != RMC_LENGTH) {
+                        return;
+                    }
+                    break;
+                case NMEAMessageID.VTG:
+                    if (original.length != VTG_LENGTH) {
+                        return;
+                    }
+                    break;
+                default:
+            }
+            //检查完毕，添加进集合
             nmeaString.add(String.valueOf(chars));
         }
     }
@@ -271,6 +329,7 @@ public class CH34xCahce {
         if (instance != null) {
             throw new RuntimeException();
         }
+        messageIdParser = new NMEAMessageIdParser();
         handler = new Handler(Looper.getMainLooper()) {
             @Override
             public void handleMessage(Message msg) {

@@ -59,7 +59,41 @@ public class NMEAParser {
         if (TextUtils.isEmpty(nmea)) {
             return;
         }
-        parseData(nmea);
+        //进行数据校验
+        if (dataVerification(nmea)) {
+            parseData(nmea);
+        }
+    }
+
+    /**
+     * 校验数据是否合法
+     * 通过判断最后俩位16进制是否与$和*之间全部字符的异或结果之和相同，包括,
+     *
+     * @return true：校验合法，false：校验不合法
+     **/
+    private boolean dataVerification(String nmea) {
+        if (TextUtils.isEmpty(nmea)) {
+            return false;
+        }
+        //第一个字符是$，不需要参与运算,最后一个是*，也不需要
+        char xor = nmea.charAt(1);
+        for (int i = 2; i < nmea.length(); i++) {
+            if (nmea.charAt(i) == '*') {
+                break;
+
+            } else {
+                xor ^= nmea.charAt(i);
+            }
+        }
+        //char类型是16位的，占俩个字节，其范围是0~65536
+        //为了防止运算结果超出char的数值范围，取余数，范围0~65536
+        int result = xor % 65536;
+        //把result转成16进制
+        String str = Integer.toString(result, 16);
+        if (nmea.endsWith(str)) {
+            return true;
+        }
+        return false;
     }
 
     /**

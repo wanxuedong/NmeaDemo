@@ -8,12 +8,12 @@ package world.share.myapplication.neamparser.constant;
 public enum TalkerID {
 
     /**
-     * GPS定位系统，美国
+     * GPS定位系统，SBAS，QZSS，美国
      **/
     GP,
 
     /**
-     * 北斗系统，中国
+     * BDS，北斗系统，中国
      **/
     BD,
 
@@ -33,7 +33,7 @@ public enum TalkerID {
     GA,
 
     /**
-     * 缩写：GNSS，全称：Global Navigation Satellite System，全球导航卫星系统，泛指所有的卫星导航系统，包括其他全部枚举标识
+     * GNSS，全称：Global Navigation Satellite System，全球导航卫星系统，泛指所有的卫星导航系统，包括其他全部枚举标识
      **/
     GN,
 

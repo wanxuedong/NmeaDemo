@@ -15,7 +15,7 @@
     <string name="read_bytes">读取数据</string>
     <string name="write_bytes">写入数据</string>
     <string name="write">发送</string>
-    <string name="open">打开</string>
+    <string name="open">打开串口</string>
     <string name="clear">清除</string>
     <string name="hint">输入数据</string>
 

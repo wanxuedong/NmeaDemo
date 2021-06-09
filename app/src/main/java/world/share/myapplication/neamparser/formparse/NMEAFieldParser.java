@@ -11,7 +11,12 @@ import world.share.myapplication.neamparser.data.TimeData;
 import world.share.myapplication.neamparser.handler.NMEAHandler;
 import world.share.myapplication.neamparser.utils.DataParser;
 
-import static world.share.myapplication.neamparser.constant.FieldLength.*;
+import static world.share.myapplication.neamparser.constant.FieldLength.GGA_LENGTH;
+import static world.share.myapplication.neamparser.constant.FieldLength.GLL_LENGTH;
+import static world.share.myapplication.neamparser.constant.FieldLength.GSA_LENGTH;
+import static world.share.myapplication.neamparser.constant.FieldLength.GSV_LENGTH;
+import static world.share.myapplication.neamparser.constant.FieldLength.RMC_LENGTH;
+import static world.share.myapplication.neamparser.constant.FieldLength.VTG_LENGTH;
 
 
 /**
@@ -118,7 +123,7 @@ public abstract class NMEAFieldParser {
         float speed = DataParser.getSpeed(content[7]);
         float course = DataParser.getDirection(content[8]);
         if (nmeaHandler != null) {
-            nmeaHandler.onRMC(talkId, time, new CoordinateData(longitude, latitude), speed, course);
+            nmeaHandler.onRMC(talkId, content[2], time, new CoordinateData(longitude, latitude), speed, course);
         }
     }
 

@@ -47,13 +47,14 @@ public abstract class NMEAAbstractParser implements NMEAHandler {
      * $GNRMC,063544.00,V,3201.70158,N,11854.94867,E,,,050621,,,N,V*24
      *
      * @param talkerID       卫星类型
+     * @param state          定位状态，A-有效定位,V-无效定位
      * @param time           UTC时间，单位：时分秒
      * @param coordinateData 经纬度坐标，经度，单位：度度度分分.分分分分,纬度，单位：度度分分.分分分分
      * @param speed          对地速度，0.0至1851.8节  单位：节，
      * @param course         对地方向，地面航向，以真北为参考基准，沿顺时针方向至航向的角度，单位：度
      **/
     @Override
-    public void onRMC(TalkerID talkerID, TimeData time, CoordinateData coordinateData, float speed, float course) {
+    public void onRMC(TalkerID talkerID, String state, TimeData time, CoordinateData coordinateData, float speed, float course) {
 
     }
 
@@ -65,7 +66,10 @@ public abstract class NMEAAbstractParser implements NMEAHandler {
      * @param talkerID 卫星类型
      * @param mode     工作模式，M-手动选择，A-自动选择
      * @param state    定位状态，1-没有定位，2-2D定位，3-3D定位
-     * @param numbers  卫星编号集合
+     * @param numbers  卫星编号集合，展示的是卫星编号，和卫星RPN对应关系如下：
+     *                 卫星RPN号：   GPS：1-32，SBAS：120-138，GLONASS：1-24，BDS：1-37，QZSS：193-197
+     *                 卫星编号标识符：  GPS：1-32，SBAS：33-51，GLONASS：65-88，BDS：1-37，QZSS：193-197
+     *                 卫星编号与其RPN对应关系：  GPS：0+RPN，SBAS：87+RPN，GLONASS：64+RPN，BDS：0+RPN，QZSS：0+RPN
      * @param pDop     空间位置精度因子
      * @param hDop     水平位置精度因子
      * @param vDop     高程位置精度因子

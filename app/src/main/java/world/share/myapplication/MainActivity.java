@@ -14,11 +14,13 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import cn.wch.ch34xuartdriver.CH34xUARTDriver;
 import world.share.myapplication.ch34xcache.CH34xCahce;
@@ -26,8 +28,10 @@ import world.share.myapplication.ch34xcache.OnCH34xListener;
 import world.share.myapplication.neamparser.NMEAParser;
 import world.share.myapplication.neamparser.constant.TalkerID;
 import world.share.myapplication.neamparser.data.CoordinateData;
+import world.share.myapplication.neamparser.data.SatellitesData;
 import world.share.myapplication.neamparser.data.TimeData;
 import world.share.myapplication.neamparser.handler.NMEAAbstractParser;
+import world.share.myapplication.neamparser.message.MessageProduct;
 
 /**
  * @author wanxuedong  2021/6/5
@@ -51,7 +55,7 @@ public class MainActivity extends Activity {
     private int retval;
     private MainActivity activity;
 
-    private TextView openButton, configButton,clearButton,writeButton;
+    private TextView openButton, configButton, clearButton, writeButton;
 
     public byte[] writeBuffer;
     public byte[] readBuffer;
@@ -75,15 +79,17 @@ public class MainActivity extends Activity {
     public SharedPreferences sharePrefSettings;
     public String act_string;
 
+    private CH34xUARTDriver driver;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        MyApp.driver = new CH34xUARTDriver(
+        driver = new CH34xUARTDriver(
                 (UsbManager) getSystemService(Context.USB_SERVICE), this,
                 ACTION_USB_PERMISSION);
         initUI();
-        if (!MyApp.driver.UsbFeatureSupported())// 判断系统是否支持USB HOST
+        if (!driver.UsbFeatureSupported())// 判断系统是否支持USB HOST
         {
             Dialog dialog = new AlertDialog.Builder(MainActivity.this)
                     .setTitle("提示")
@@ -114,18 +120,18 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View arg0) {
                 if (!isOpen) {
-                    int retval = MyApp.driver.ResumeUsbPermission();
+                    int retval = driver.ResumeUsbPermission();
                     if (retval == 0) {
                         //Resume usb device list
-                        retval = MyApp.driver.ResumeUsbList();
+                        retval = driver.ResumeUsbList();
                         if (retval == -1)// ResumeUsbList方法用于枚举CH34X设备以及打开相关设备
                         {
                             Toast.makeText(MainActivity.this, "Open failed!",
                                     Toast.LENGTH_SHORT).show();
-                            MyApp.driver.CloseDevice();
+                            driver.CloseDevice();
                         } else if (retval == 0) {
-                            if (MyApp.driver.mDeviceConnection != null) {
-                                if (!MyApp.driver.UartInit()) {//对串口设备进行初始化操作
+                            if (driver.mDeviceConnection != null) {
+                                if (!driver.UartInit()) {//对串口设备进行初始化操作
                                     Toast.makeText(MainActivity.this, "Initialization failed!",
                                             Toast.LENGTH_SHORT).show();
                                     return;
@@ -133,7 +139,7 @@ public class MainActivity extends Activity {
                                 Toast.makeText(MainActivity.this, "Device opened",
                                         Toast.LENGTH_SHORT).show();
                                 isOpen = true;
-                                openButton.setText("Close");
+                                openButton.setText("关闭串口");
                                 configButton.setEnabled(true);
                                 writeButton.setEnabled(true);
                                 new readThread().start();//开启读线程读取串口接收的数据
@@ -144,7 +150,7 @@ public class MainActivity extends Activity {
                         } else {
 
                             AlertDialog.Builder builder = new AlertDialog.Builder(activity);
-                            builder.setIcon(R.drawable.icon);
+                            builder.setIcon(R.drawable.ic_launcher_background);
                             builder.setTitle("未授权限");
                             builder.setMessage("确认退出吗？");
                             builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
@@ -167,7 +173,7 @@ public class MainActivity extends Activity {
                         }
                     }
                 } else {
-                    openButton.setText("Open");
+                    openButton.setText("打开串口");
                     configButton.setEnabled(false);
                     writeButton.setEnabled(false);
                     isOpen = false;
@@ -177,7 +183,7 @@ public class MainActivity extends Activity {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
-                    MyApp.driver.CloseDevice();
+                    driver.CloseDevice();
                 }
             }
         });
@@ -187,7 +193,7 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View arg0) {
 
-                if (MyApp.driver.SetConfig(baudRate, dataBit, stopBit, parity,//配置串口波特率，函数说明可参照编程手册
+                if (driver.SetConfig(baudRate, dataBit, stopBit, parity,//配置串口波特率，函数说明可参照编程手册
                         flowControl)) {
                     Toast.makeText(MainActivity.this, "Config successfully",
                             Toast.LENGTH_SHORT).show();
@@ -203,7 +209,7 @@ public class MainActivity extends Activity {
             public void onClick(View arg0) {
                 byte[] to_send = toByteArray(writeText.getText().toString());        //以16进制发送
 //				byte[] to_send = toByteArray2(writeText.getText().toString());		//以字符串方式发送
-                int retval = MyApp.driver.WriteData(to_send, to_send.length);//写数据，第一个参数为需要发送的字节数组，第二个参数为需要发送的字节长度，返回实际发送的字节长度
+                int retval = driver.WriteData(to_send, to_send.length);//写数据，第一个参数为需要发送的字节数组，第二个参数为需要发送的字节长度，返回实际发送的字节长度
                 if (retval < 0) {
                     Toast.makeText(MainActivity.this, "Write failed!",
                             Toast.LENGTH_SHORT).show();
@@ -229,20 +235,20 @@ public class MainActivity extends Activity {
     @Override
     public void onDestroy() {
         isOpen = false;
-        MyApp.driver.CloseDevice();
+        driver.CloseDevice();
         super.onDestroy();
     }
 
     //处理界面
     private void initUI() {
-        readText = (TextView) findViewById(R.id.ReadValues);
-        writeText = (EditText) findViewById(R.id.WriteValues);
-        configButton = (TextView) findViewById(R.id.configButton);
-        writeButton = (Button) findViewById(R.id.WriteButton);
-        openButton = (TextView) findViewById(R.id.open_device);
-        clearButton = (Button) findViewById(R.id.clearButton);
+        readText = findViewById(R.id.ReadValues);
+        writeText = findViewById(R.id.WriteValues);
+        configButton = findViewById(R.id.configButton);
+        writeButton = findViewById(R.id.WriteButton);
+        openButton = findViewById(R.id.open_device);
+        clearButton = findViewById(R.id.clearButton);
 
-        baudSpinner = (Spinner) findViewById(R.id.baudRateValue);
+        baudSpinner = findViewById(R.id.baudRateValue);
         ArrayAdapter<CharSequence> baudAdapter = ArrayAdapter
                 .createFromResource(this, R.array.baud_rate,
                         R.layout.my_spinner_textview);
@@ -317,63 +323,34 @@ public class MainActivity extends Activity {
                 readText.setText("");
             }
         });
-
-//        parser.parse("$GNRMC,091529.00,A,3201.75538,N," +
-//                "11854.95529,E,0.000,,030621,,,A," +
-//                "V*13" +
-//                "$GNGGA,091529.00,3201.7553" +
-//                "8,N,11854.95529,E,1,16,1.16,66.0" +
-//                ",M,,M,,*6C" +
-//                "$GNGSA,A,3,02,05,12," +
-//                "20,25,06,09,17,19,195,,,2.00,1.1" +
-//                "6,1.63,1*3C" +
-//                "$GNGSA,A,3,13,27,05" +
-//                ",08,28,33,,,,,,,2.00,1.16,1.63,4" +
-//                "*04" +
-//                "$GPGSV,3,1,11,02,61,353,40," +
-//                "05,39,252,31,06,49,062,17,09,25," +
-//                "050,20,0*6B" +
-//                "$GPGSV,3,2,11,12,26" +
-//                ",260,24,13,12,184,,17,14,145,14," +
-//                "19,36,145,15,0*62" +
-//                "$GPGSV,3,3,11" +
-//                ",20,27,254,36,25,14,295,44,195,6" +
-//                "4,130,14,0*60" +
-//                "$GBGSV,2,1,06,05," +
-//                "17,253,36,08,57,357,30,13,51,319" +
-//                ",38,27,58,325,36,0*77" +
-//                "$GBGSV,2," +
-//                "2,06,28,62,116,26,33,39,042,25,0" +
-//                "*76");
-//        parser.parse("$GPRMC,163407.000,A,5004.7485,N,01423.8956,E,0.04,36.97,180416,,*38");
 //        CH340Cahce.getInstance().receive("$GPRMC,163407.000,A,5004.7485,N,01423.8956,E,0.04,36.97,180416,,*38");
-        CH34xCahce.getInstance().receive("$GNRMC,091529.00,A,3201.75538,N,\n" +
-                "11854.95529,E,0.000,,030621,,,A,\n" +
-                "V*13\n" +
-                "$GNGGA,091529.00,3201.7553\n" +
-                "8,N,11854.95529,E,1,16,1.16,66.0\n" +
-                ",M,,M,,*6C\n" +
-                "$GNGSA,A,3,02,05,12,\n" +
-                "20,25,06,09,17,19,195,,,2.00,1.1\n" +
-                "6,1.63,1*3C\n" +
-                "$GNGSA,A,3,13,27,05\n" +
-                ",08,28,33,,,,,,,2.00,1.16,1.63,4\n" +
-                "*04\n" +
-                "$GPGSV,3,1,11,02,61,353,40,\n" +
-                "05,39,252,31,06,49,062,17,09,25,\n" +
-                "050,20,0*6B\n" +
-                "$GPGSV,3,2,11,12,26\n" +
-                ",260,24,13,12,184,,17,14,145,14,\n" +
-                "19,36,145,15,0*62\n" +
-                "$GPGSV,3,3,11\n" +
-                ",20,27,254,36,25,14,295,44,195,6\n" +
-                "4,130,14,0*60\n" +
-                "$GBGSV,2,1,06,05,\n" +
-                "17,253,36,08,57,357,30,13,51,319\n" +
-                ",38,27,58,325,36,0*77\n" +
-                "$GBGSV,2,\n" +
-                "2,06,28,62,116,26,33,39,042,25,0\n" +
-                "*76");
+//        CH34xCahce.getInstance().receive("$GNRMC,091529.00,A,3201.75538,N,\n" +
+//                "11854.95529,E,0.000,,030621,,,A,\n" +
+//                "V*13\n" +
+//                "$GNGGA,091529.00,3201.7553\n" +
+//                "8,N,11854.95529,E,1,16,1.16,66.0\n" +
+//                ",M,,M,,*6C\n" +
+//                "$GNGSA,A,3,02,05,12,\n" +
+//                "20,25,06,09,17,19,195,,,2.00,1.1\n" +
+//                "6,1.63,1*3C\n" +
+//                "$GNGSA,A,3,13,27,05\n" +
+//                ",08,28,33,,,,,,,2.00,1.16,1.63,4\n" +
+//                "*04\n" +
+//                "$GPGSV,3,1,11,02,61,353,40,\n" +
+//                "05,39,252,31,06,49,062,17,09,25,\n" +
+//                "050,20,0*6B\n" +
+//                "$GPGSV,3,2,11,12,26\n" +
+//                ",260,24,13,12,184,,17,14,145,14,\n" +
+//                "19,36,145,15,0*62\n" +
+//                "$GPGSV,3,3,11\n" +
+//                ",20,27,254,36,25,14,295,44,195,6\n" +
+//                "4,130,14,0*60\n" +
+//                "$GBGSV,2,1,06,05,\n" +
+//                "17,253,36,08,57,357,30,13,51,319\n" +
+//                ",38,27,58,325,36,0*77\n" +
+//                "$GBGSV,2,\n" +
+//                "2,06,28,62,116,26,33,39,042,25,0\n" +
+//                "*76");
         CH34xCahce.getInstance().start();
         CH34xCahce.getInstance().addListener(new OnCH34xListener() {
             @Override
@@ -382,19 +359,33 @@ public class MainActivity extends Activity {
                 NMEAParser.getInstance().setNmeaHandler(new NMEAAbstractParser() {
                     @Override
                     public void onGGA(TalkerID talkerID, TimeData time, CoordinateData coordinateData, int satellites, float altitude) {
-                        readText.setText(talkerID + "   卫星数量 : " + satellites + "  :  标准时间 : " + time.toString() + " : 坐标 : " + coordinateData.toString());
-                        Toast.makeText(MainActivity.this, talkerID + "   卫星数量 : " + satellites + "  :  标准时间 : " + time.toString() + " : 坐标 : " + coordinateData.toString(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "GGA : " + talkerID + "   卫星数量 : " + satellites + "  :  标准时间 : " + time.toString() + " : 坐标 : " + coordinateData.toString(), Toast.LENGTH_SHORT).show();
                     }
 
                     @Override
-                    public void onRMC(TalkerID talkerID, TimeData time, CoordinateData coordinateData, float speed, float course) {
-                        super.onRMC(talkerID, time, coordinateData, speed, course);
-                        readText.setText(talkerID + "   当前角度 : " + course + "  :  标准时间 : " + time.toString() + " : 坐标 : " + coordinateData.toString());
-                        Toast.makeText(MainActivity.this, talkerID + "   当前角度 : " + course + "  :  标准时间 : " + time.toString() + " : 坐标 : " + coordinateData.toString(), Toast.LENGTH_SHORT).show();
+                    public void onRMC(TalkerID talkerID, String state, TimeData time, CoordinateData coordinateData, float speed, float course) {
+                        super.onRMC(talkerID, state, time, coordinateData, speed, course);
+                        Toast.makeText(MainActivity.this, "RMC : " + talkerID + "   当前角度 : " + course + "  :  标准时间 : " + time.toString() + " : 坐标 : " + coordinateData.toString(), Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onGSA(TalkerID talkerID, String mode, String state, List<String> numbers, String pDop, String hDop, String vDop) {
+                        super.onGSA(talkerID, mode, state, numbers, pDop, hDop, vDop);
+                        Toast.makeText(MainActivity.this, "GSA : " + talkerID + "   卫星模式 : " + ("M".equals(mode) ? "手动选择" : "自动选择") + "  :  定位模式 : " + state + " : 卫星数量 : " + numbers.size(), Toast.LENGTH_SHORT).show();
+
+                    }
+
+                    @Override
+                    public void onGSV(TalkerID talkerID, int satellites, List<SatellitesData> satellitesDataList) {
+                        super.onGSV(talkerID, satellites, satellitesDataList);
+                        Toast.makeText(MainActivity.this, "GSV : " + talkerID + "   卫星数量 : " + satellites, Toast.LENGTH_SHORT).show();
                     }
                 });
             }
         });
+        MessageProduct messageProduct = new MessageProduct();
+        String message = messageProduct.productCAS10(2);
+        byte[] txt = toByteArray(message);
         return;
     }
 
@@ -516,11 +507,11 @@ public class MainActivity extends Activity {
                 if (!isOpen) {
                     break;
                 }
-                int length = MyApp.driver.ReadData(buffer, 4096);
+                int length = driver.ReadData(buffer, 4096);
                 if (length > 0) {
 //                    String recv = toHexString(buffer, length);        //以16进制输出
                     String recv = new String(buffer, 0, length);        //以字符串形式输出
-//                    CH340Cahce.getInstance().receive(recv);
+                    CH34xCahce.getInstance().receive(recv);
                     msg.obj = recv;
                     handler.sendMessage(msg);
                 }
