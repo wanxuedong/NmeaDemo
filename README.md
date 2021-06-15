@@ -1,20 +1,19 @@
 # NmeaDemo
 Ch34X + NMEA
 
-本项目基于CH34xUARTDemo
-添加了NMEA数据的缓存和协议解析
+本项目基于CH34xUARTDemo，添加了NMEA数据的缓存和协议解析
 
-使用步骤
+使用步骤:通过CH34xCahce和NMEAParser的搭配使用完成数据处理
 
 ### CH34xCahce类
 作用：用于传入一或多段NMEA数据，筛选处理规范的数据，并按单条完整NMEA数据回调回来。
 
-（1）.开启缓存
+（1）开启缓存处理
 ```
 CH34xCahce.getInstance().start();
 ```
 
-（2）.添加数据处理监听
+（2）添加数据处理监听
 ```
  CH34xCahce.getInstance().addListener(new OnCH34xListener() {
             @Override
@@ -23,23 +22,28 @@ CH34xCahce.getInstance().start();
         });
 ```
 
-（3）.接收NMEA数据
+（3）接收NMEA数据
 ```
 String nmea = "$GPRMC,163407.000,A,5004.7485,N,01423.8956,E,0.04,36.97,180416,,*38";
 CH34xCahce.getInstance().receive(nmea);
+```
+
+（4）停止缓存处理
+```
+CH34xCahce.getInstance().stop();
 ```
 
 
 ### NMEAParser类
 作用：传入单条完整NMEA数据，解析成符合的格式，并在不同的格式回调中返回数据
 
-（1）.传入需要解析NMEA
+（1）传入需要解析NMEA
 ```
 String nmea = "$GPRMC,163407.000,A,5004.7485,N,01423.8956,E,0.04,36.97,180416,,*38";
 NMEAParser.getInstance().parse(nmea);
 ```
 
-（2）.添加回调监听
+（2）添加回调监听
 ```
 NMEAParser.getInstance().setNmeaHandler(new NMEAAbstractParser() {
 
