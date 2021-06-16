@@ -20,7 +20,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import cn.wch.ch34xuartdriver.CH34xUARTDriver;
 import world.share.myapplication.ch34xcache.CH34xCahce;
@@ -357,9 +356,14 @@ public class MainActivity extends Activity {
             public void location(String nmea) {
                 NMEAParser.getInstance().parse(nmea);
                 NMEAParser.getInstance().setNmeaHandler(new NMEAAbstractParser() {
+
+                    @Override
+                    public void onOriginal(String[] original) {
+                        super.onOriginal(original);
+                    }
+
                     @Override
                     public void onGGA(TalkerID talkerID, TimeData time, CoordinateData coordinateData, int satellites, float altitude) {
-                        Toast.makeText(MainActivity.this, "GGA : " + talkerID + "   卫星数量 : " + satellites + "  :  标准时间 : " + time.toString() + " : 坐标 : " + coordinateData.toString(), Toast.LENGTH_SHORT).show();
                     }
 
                     @Override
@@ -379,6 +383,16 @@ public class MainActivity extends Activity {
                     public void onGSV(TalkerID talkerID, int satellites, List<SatellitesData> satellitesDataList) {
                         super.onGSV(talkerID, satellites, satellitesDataList);
                         Toast.makeText(MainActivity.this, "GSV : " + talkerID + "   卫星数量 : " + satellites, Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onGLL(TalkerID talkerID, TimeData time, CoordinateData coordinateData, String state) {
+                        super.onGLL(talkerID, time, coordinateData, state);
+                    }
+
+                    @Override
+                    public void onVTG(TalkerID talkerID, float northCourse, float magneticCourse, float seaSpeed, float landSpeed) {
+                        super.onVTG(talkerID, northCourse, magneticCourse, seaSpeed, landSpeed);
                     }
                 });
             }
