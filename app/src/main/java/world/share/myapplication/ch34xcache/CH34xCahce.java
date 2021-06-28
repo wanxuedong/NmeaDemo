@@ -236,7 +236,7 @@ public class CH34xCahce {
      * @param c 传入的nmea字符，不可属于特殊字符
      **/
     private void addChar(char c) {
-        if (c != LINE && index <= MAX_CACHE) {
+        if (c != LINE && index < MAX_CACHE) {
             cachesChars[index++] = c;
         }
     }
